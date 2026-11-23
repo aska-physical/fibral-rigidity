@@ -18,6 +18,30 @@ ROOT = Path(__file__).resolve().parent
 DATA_PATH = ROOT / "data" / "carbon_fibers.json"
 CERT_PATH = ROOT / "results" / "certificate.json"
 
+class CheckFailure(RuntimeError):
+    """A failed check. Raised as a normal exception so python -O cannot strip it."""
+
+
+def require(ok: bool, message: str) -> None:
+    if not ok:
+        raise CheckFailure(message)
+
+
+def sanitize(value: Any) -> Any:
+    """Drop the sign on a zero so two machines write the same certificate."""
+    if isinstance(value, dict):
+        return {key: sanitize(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [sanitize(item) for item in value]
+    if isinstance(value, float) and value == 0.0:
+        return 0.0
+    return value
+
+
+NUMERICAL_BOUND = 1e-9
+
+
+
 
 def build_fn_bars(
     n: int, t: float, E1: float, A_intra: float, A_cross: float, A_diag: float = 0.0
@@ -108,9 +132,9 @@ def run_symbolic_checks() -> dict[str, Any]:
     C11_expr = sp.Integer(2) ** (2 - n_sym) * k1 * lam * (n_sym - 1) * (n_sym - 2 + lam) / denom
     C12_expr = sp.Integer(2) ** (2 - n_sym) * k1 * lam**2 / denom
 
-    assert sp.simplify(C11_expr.subs({lam: 1, k1: 1}) - 4 * (n_sym - 1) ** 2 / (n_sym**2 * sp.Integer(2) ** n_sym)) == 0
-    assert sp.simplify(C12_expr.subs({lam: 1, k1: 1}) - 4 / (n_sym**2 * sp.Integer(2) ** n_sym)) == 0
-    assert sp.simplify(C11_expr / C12_expr - (n_sym - 1) * (n_sym - 2 + lam) / lam) == 0
+    require(sp.simplify(C11_expr.subs({lam: 1, k1: 1}) - 4 * (n_sym - 1) ** 2 / (n_sym**2 * sp.Integer(2) ** n_sym)) == 0, 'sp.simplify(C11_expr.subs({lam: 1, k1: 1}) - 4 * (n_sym - 1) ** 2 / (n_sym**2 * sp.Integer(2) ** n_sym)) == 0')
+    require(sp.simplify(C12_expr.subs({lam: 1, k1: 1}) - 4 / (n_sym**2 * sp.Integer(2) ** n_sym)) == 0, 'sp.simplify(C12_expr.subs({lam: 1, k1: 1}) - 4 / (n_sym**2 * sp.Integer(2) ** n_sym)) == 0')
+    require(sp.simplify(C11_expr / C12_expr - (n_sym - 1) * (n_sym - 2 + lam) / lam) == 0, 'sp.simplify(C11_expr / C12_expr - (n_sym - 1) * (n_sym - 2 + lam) / lam) == 0')
 
     for n_val in range(2, 8):
         e_s = sp.symbols(f"e0:{n_val}", real=True)
@@ -118,17 +142,17 @@ def run_symbolic_checks() -> dict[str, Any]:
         E_cell = k1 * sum((y_s[i] + y_s[j]) ** 2 for i in range(n_val) for j in range(i + 1, n_val)) + 2 * lam * k1 * sum((e_s[i] - y_s[i]) ** 2 for i in range(n_val))
         sol_y = sp.solve([sp.diff(E_cell, y_s[i]) for i in range(n_val)], y_s, dict=True)
         W_min = sp.simplify(E_cell.subs(sol_y[0]) / (2**n_val))
-        assert sp.simplify(sp.diff(W_min, e_s[0], 2) - C11_expr.subs(n_sym, n_val)) == 0
-        assert sp.simplify(sp.diff(sp.diff(W_min, e_s[0]), e_s[1]) - C12_expr.subs(n_sym, n_val)) == 0
+        require(sp.simplify(sp.diff(W_min, e_s[0], 2) - C11_expr.subs(n_sym, n_val)) == 0, 'sp.simplify(sp.diff(W_min, e_s[0], 2) - C11_expr.subs(n_sym, n_val)) == 0')
+        require(sp.simplify(sp.diff(sp.diff(W_min, e_s[0]), e_s[1]) - C12_expr.subs(n_sym, n_val)) == 0, 'sp.simplify(sp.diff(sp.diff(W_min, e_s[0]), e_s[1]) - C12_expr.subs(n_sym, n_val)) == 0')
 
     nu_expr = sp.simplify(C12_expr / (C11_expr + (n_sym - 2) * C12_expr))
     nu_expected = lam / ((n_sym - 1) * (n_sym - 2) + (2 * n_sym - 3) * lam)
-    assert sp.simplify(nu_expr - nu_expected) == 0
+    require(sp.simplify(nu_expr - nu_expected) == 0, 'sp.simplify(nu_expr - nu_expected) == 0')
     nu_3d = nu_expected.subs(n_sym, 3)
-    assert sp.simplify(sp.diff(nu_3d, lam) - 2 / (2 + 3 * lam) ** 2) == 0
-    assert sp.limit(nu_3d, lam, sp.oo) == sp.Rational(1, 3)
+    require(sp.simplify(sp.diff(nu_3d, lam) - 2 / (2 + 3 * lam) ** 2) == 0, 'sp.simplify(sp.diff(nu_3d, lam) - 2 / (2 + 3 * lam) ** 2) == 0')
+    require(sp.limit(nu_3d, lam, sp.oo) == sp.Rational(1, 3), 'sp.limit(nu_3d, lam, sp.oo) == sp.Rational(1, 3)')
     nu_3d_optK = sp.simplify(nu_3d.subs(lam, 2 * sp.sqrt(2)))
-    assert sp.simplify(nu_3d_optK - (6 - sp.sqrt(2)) / 17) == 0
+    require(sp.simplify(nu_3d_optK - (6 - sp.sqrt(2)) / 17) == 0, 'sp.simplify(nu_3d_optK - (6 - sp.sqrt(2)) / 17) == 0')
 
     K_expr = sp.simplify((C11_expr + (n_sym - 1) * C12_expr) / n_sym)
     k1_bar = E1 * A1 / (t * sp.sqrt(2))
@@ -138,29 +162,29 @@ def run_symbolic_checks() -> dict[str, Any]:
     K_cont = sp.simplify(K_expr.subs({k1: k1_bar, lam: lam_bar}))
     K_bound = sp.simplify(rho_bar * E1 / (n_sym**2))
     gap = sp.together(K_bound - K_cont)
-    assert sp.simplify(gap.subs(alpha, sp.sqrt(2) * (n_sym - 1))) == 0
+    require(sp.simplify(gap.subs(alpha, sp.sqrt(2) * (n_sym - 1))) == 0, 'sp.simplify(gap.subs(alpha, sp.sqrt(2) * (n_sym - 1))) == 0')
 
     for n_val in range(2, 8):
         quot_n = sp.cancel(gap.subs(n_sym, n_val) / (alpha - sp.sqrt(2) * (n_val - 1)) ** 2, extension=[sp.sqrt(2)])
         num_q, den_q = sp.fraction(quot_n)
         if sp.Poly(sp.expand(den_q), u_pos, alpha, E1, A1).LC() < 0:
             num_q, den_q = -num_q, -den_q
-        assert all(c > 0 for c in sp.Poly(sp.expand(num_q), u_pos, alpha, E1, A1).coeffs())
-        assert all(c > 0 for c in sp.Poly(sp.expand(den_q), u_pos, alpha, E1, A1).coeffs())
+        require(all(c > 0 for c in sp.Poly(sp.expand(num_q), u_pos, alpha, E1, A1).coeffs()), 'all(c > 0 for c in sp.Poly(sp.expand(num_q), u_pos, alpha, E1, A1).coeffs())')
+        require(all(c > 0 for c in sp.Poly(sp.expand(den_q), u_pos, alpha, E1, A1).coeffs()), 'all(c > 0 for c in sp.Poly(sp.expand(den_q), u_pos, alpha, E1, A1).coeffs())')
 
     u_inc = sp.sqrt(2)
     ratio_eq = sp.simplify((K_cont / K_bound).subs({n_sym: 3, u_pos: u_inc, alpha: 1}))
-    assert sp.simplify(ratio_eq - sp.Rational(2, 15) * (3 + 2 * sp.sqrt(2))) == 0
+    require(sp.simplify(ratio_eq - sp.Rational(2, 15) * (3 + 2 * sp.sqrt(2))) == 0, 'sp.simplify(ratio_eq - sp.Rational(2, 15) * (3 + 2 * sp.sqrt(2))) == 0')
 
     C11_3d = C11_expr.subs({n_sym: 3, k1: k1_bar, lam: lam_bar})
     C12_3d = C12_expr.subs({n_sym: 3, k1: k1_bar, lam: lam_bar})
     E100_3d = sp.simplify(C11_3d - 2 * C12_3d**2 / (C11_3d + C12_3d))
     f_E100 = sp.simplify((E100_3d / (rho_bar.subs(n_sym, 3) * E1)).subs(u_pos, u_inc))
-    assert sp.limit(f_E100, alpha, 0) == 0 and sp.limit(f_E100, alpha, sp.oo) == 0
+    require(sp.limit(f_E100, alpha, 0) == 0 and sp.limit(f_E100, alpha, sp.oo) == 0, 'sp.limit(f_E100, alpha, 0) == 0 and sp.limit(f_E100, alpha, sp.oo) == 0')
     alpha_E_opt = 2 * sp.sqrt(6) / 3
-    assert sp.simplify(sp.diff(f_E100, alpha).subs(alpha, alpha_E_opt)) == 0
+    require(sp.simplify(sp.diff(f_E100, alpha).subs(alpha, alpha_E_opt)) == 0, 'sp.simplify(sp.diff(f_E100, alpha).subs(alpha, alpha_E_opt)) == 0')
     norm_E100_max = sp.simplify(f_E100.subs(alpha, alpha_E_opt))
-    assert sp.simplify(norm_E100_max - (3 + 2 * sp.sqrt(2)) / (3 * (7 + 2 * sp.sqrt(6)))) == 0
+    require(sp.simplify(norm_E100_max - (3 + 2 * sp.sqrt(2)) / (3 * (7 + 2 * sp.sqrt(6)))) == 0, 'sp.simplify(norm_E100_max - (3 + 2 * sp.sqrt(2)) / (3 * (7 + 2 * sp.sqrt(6)))) == 0')
 
     return {
         "symbolic_dimensions_checked": list(range(2, 8)),
@@ -205,12 +229,12 @@ def run_numerical_truss_checks() -> dict[str, Any]:
                 c12_th = scale * (lam**2) / denom
                 err = max(abs(C_mat[0, 0] - c11_th), abs(C_mat[0, 1] - c12_th), float(np.max(np.abs(C_mat[n:, :]))))
                 max_err = max(max_err, err)
-                assert err < 1e-11
+                require(err < 1e-11, 'err < 1e-11')
                 K_num = (C_mat[0, 0] + (n - 1) * C_mat[0, 1]) / n
                 K_max = rho_bar * E1 / (n**2)
-                assert K_num <= K_max + 1e-12
+                require(K_num <= K_max + 1e-12, 'K_num <= K_max + 1e-12')
                 if abs(alpha - alpha_opt) < 1e-14:
-                    assert abs(K_num - K_max) < 1e-11
+                    require(abs(K_num - K_max) < 1e-11, 'abs(K_num - K_max) < 1e-11')
                 cases += 1
 
     alpha_opt_3d = 2.0 * math.sqrt(2.0)
@@ -219,7 +243,7 @@ def run_numerical_truss_checks() -> dict[str, Any]:
         coords, bars = build_fn_bars(3, c_inc, 1.0, 1.0, alpha_opt_3d, A_diag=beta)
         C_mat, rho_bar = homogenize_periodic_truss(3, coords, bars)
         C11, C12, C44 = float(C_mat[0, 0]), float(C_mat[0, 1]), float(C_mat[3, 3])
-        assert C44 > 0.0 and np.allclose(np.diag(C_mat[:3, :3]), C11, atol=1e-12) and np.allclose(np.diag(C_mat[3:, 3:]), C44, atol=1e-12)
+        require(C44 > 0.0 and np.allclose(np.diag(C_mat[:3, :3]), C11, atol=1e-12) and np.allclose(np.diag(C_mat[3:, 3:]), C44, atol=1e-12), 'C44 > 0.0 and np.allclose(np.diag(C_mat[:3, :3]), C11, atol=1e-12) and np.allclose(np.diag(C_mat[3:, 3:]), C44, atol=1e-12)')
         K_eff = (C11 + 2.0 * C12) / 3.0
         E_100 = C11 - 2.0 * (C12**2) / (C11 + C12)
         E_111 = 1.0 / (1.0 / (9.0 * K_eff) + 1.0 / (3.0 * C44))
@@ -247,14 +271,16 @@ def run_numerical_truss_checks() -> dict[str, Any]:
     coords, bars = build_fn_bars(3, c_inc, 1.0, 1.0, alpha_opt_3d, A_diag=beta_iso)
     C_iso, rho_iso = homogenize_periodic_truss(3, coords, bars)
     C11_i, C12_i, C44_i = float(C_iso[0, 0]), float(C_iso[0, 1]), float(C_iso[3, 3])
-    assert abs(2.0 * C44_i - (C11_i - C12_i)) < 1e-11
+    require(abs(2.0 * C44_i - (C11_i - C12_i)) < 1e-11, 'abs(2.0 * C44_i - (C11_i - C12_i)) < 1e-11')
     E_iso = C11_i - 2.0 * (C12_i**2) / (C11_i + C12_i)
     K_iso = (C11_i + 2.0 * C12_i) / 3.0
-    assert E_iso / rho_iso <= (1.0 / 6.0) + 1e-12
+    require(E_iso / rho_iso <= (1.0 / 6.0) + 1e-12, 'E_iso / rho_iso <= (1.0 / 6.0) + 1e-12')
+    discrepancy_within_bound = bool(max_err < NUMERICAL_BOUND)
+    require(discrepancy_within_bound, "numerical discrepancy left the 1e-9 bound")
 
     return {
         "coordinate_homogenization_cases_checked": cases,
-        "max_numerical_analytical_discrepancy": float(f"{max_err:.3e}"),
+        "max_discrepancy_within_1e-9": discrepancy_within_bound,
         "braced_3d_profiles": braced_profiles,
         "isotropic_braced_point": {
             "alpha_cross_over_intra": round(alpha_opt_3d, 10),
@@ -347,38 +373,55 @@ def run_cfrp_benchmark_checks(num_res: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def shear_within_bound(stiffness: np.ndarray, bound: float = NUMERICAL_BOUND) -> bool:
+    return abs(float(stiffness[3, 3])) <= bound
+
+
 def run_must_fail_controls(num_res: dict[str, Any]) -> list[dict[str, Any]]:
     c_val = 2.0 - math.sqrt(2.0)
     coords, bars = build_fn_bars(3, c_val, 1.0, 1.0, 1.0)
     C_eq, rho_eq = homogenize_periodic_truss(3, coords, bars)
     K_eq, K_max_eq = (C_eq[0, 0] + 2.0 * C_eq[0, 1]) / 3.0, rho_eq / 9.0
-    assert abs(K_eq - K_max_eq) > 0.01 * K_max_eq
-    assert abs(C_eq[3, 3]) <= 1e-9
+    equal_area_misses_bound = bool(abs(K_eq - K_max_eq) > 0.01 * K_max_eq)
+    require(equal_area_misses_bound, "equal-area cell met the bulk bound")
+    unbraced_has_no_shear = shear_within_bound(C_eq)
+    require(unbraced_has_no_shear, "unbraced cell has shear stiffness")
+    planted = np.array(C_eq, copy=True)
+    planted[3, 3] = 1.0
+    planted_shear_rejected = not shear_within_bound(planted)
+    require(planted_shear_rejected, "planted shear stiffness was accepted")
 
+    bound_holds = True
     for a_t in (0.2, 1.0, 2.0 * math.sqrt(2.0), 10.0):
         c_t, b_t = build_fn_bars(3, 0.45, 1.0, 1.0, a_t)
         C_t, r_t = homogenize_periodic_truss(3, c_t, b_t)
-        assert (C_t[0, 0] + 2.0 * C_t[0, 1]) / 3.0 <= r_t / 9.0 + 1e-12
+        within = bool((C_t[0, 0] + 2.0 * C_t[0, 1]) / 3.0 <= r_t / 9.0 + 1e-12)
+        bound_holds = bound_holds and within
+        require(within, "pin-jointed truss exceeded the bulk bound")
 
     e_iso = float(num_res["isotropic_braced_point"]["E_iso_over_rhoE1"])
     _, _, E_hs = hashin_shtrikman_upper_bounds(1.0, 0.25, 0.05)
-    assert e_iso < (E_hs / 0.05) - 0.1
+    below_same_material_plate = e_iso < (E_hs / 0.05) - 0.1
+    require(below_same_material_plate, "isotropic truss met the same-material plate bound")
 
     C_cut, _ = homogenize_periodic_truss(3, coords, [b for idx, b in enumerate(bars) if idx != 12])
-    assert abs(C_cut[0, 0] - C_cut[1, 1]) > 1e-2
+    cut_breaks_axial = bool(abs(C_cut[0, 0] - C_cut[1, 1]) > 1e-2)
+    require(cut_breaks_axial, "cutting a cross bar preserved axial stiffness")
 
     c_off, b_off = build_fn_bars(3, 0.35, 1.0, 1.0, 1.0)
     C_off, _ = homogenize_periodic_truss(3, c_off, b_off)
     nu_off = float(C_off[0, 1] / (C_off[0, 0] + C_off[0, 1]))
-    assert abs(nu_off - 0.20) > 0.02
+    poisson_moves = abs(nu_off - 0.20) > 0.02
+    require(poisson_moves, "equal-area Poisson ratio stayed at the unit-spring value")
 
     return [
-        {"control": "equal_area_saturates_bulk_bound", "rejected": True, "observed_K_over_Kmax": round(float(K_eq / K_max_eq), 8)},
-        {"control": "unbraced_incentre_has_shear_rigidity", "rejected": True, "observed_C44": round(float(abs(C_eq[3, 3])), 20)},
-        {"control": "pin_jointed_truss_exceeds_cauchy_maxwell_bulk_bound", "rejected": True},
-        {"control": "isotropic_truss_exceeds_same_material_HS_plate_bound", "rejected": True, "truss_E_over_rhoE1": round(e_iso, 8), "hs_plate_E_over_rhoEs_at_5pct": round(E_hs / 0.05, 8)},
-        {"control": "cut_cross_bar_preserves_axial_stiffness", "rejected": True, "C11_after_cut": round(float(C_cut[0, 0]), 10), "C22_after_cut": round(float(C_cut[1, 1]), 10)},
-        {"control": "unit_spring_poisson_holds_for_equal_area_bars_at_general_t", "rejected": True, "nu_100_at_t035_equal_area": round(nu_off, 8), "unit_spring_nu_100": 0.2},
+        {"control": "equal_area_saturates_bulk_bound", "rejected": equal_area_misses_bound, "observed_K_over_Kmax": round(float(K_eq / K_max_eq), 8)},
+        {"control": "unbraced_incentre_has_shear_rigidity", "rejected": unbraced_has_no_shear},
+        {"control": "planted_shear_stiffness_is_accepted", "rejected": planted_shear_rejected},
+        {"control": "pin_jointed_truss_exceeds_cauchy_maxwell_bulk_bound", "rejected": bound_holds},
+        {"control": "isotropic_truss_exceeds_same_material_HS_plate_bound", "rejected": below_same_material_plate, "truss_E_over_rhoE1": round(e_iso, 8), "hs_plate_E_over_rhoEs_at_5pct": round(E_hs / 0.05, 8)},
+        {"control": "cut_cross_bar_preserves_axial_stiffness", "rejected": cut_breaks_axial, "C11_after_cut": round(float(C_cut[0, 0]), 10), "C22_after_cut": round(float(C_cut[1, 1]), 10)},
+        {"control": "unit_spring_poisson_holds_for_equal_area_bars_at_general_t", "rejected": poisson_moves, "nu_100_at_t035_equal_area": round(nu_off, 8), "unit_spring_nu_100": 0.2},
     ]
 
 
@@ -400,7 +443,7 @@ def main() -> int:
         "cfrp_material_benchmarks": cfrp,
         "must_fail_controls": controls,
     }
-    rendered = json.dumps(cert, indent=2, sort_keys=True) + "\n"
+    rendered = json.dumps(sanitize(cert), indent=2, sort_keys=True) + "\n"
 
     if args.write:
         CERT_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -410,7 +453,7 @@ def main() -> int:
         print("[FAIL] Certificate mismatch or missing.", file=sys.stderr)
         return 1
 
-    print(f"[PASS] Symbolic (n=2..7), Numerical ({num['coordinate_homogenization_cases_checked']} cases, max err {num['max_numerical_analytical_discrepancy']}), CFRP (5 grades), Controls (6/6): OK")
+    print(f"[PASS] Symbolic (n=2..7), Numerical ({num['coordinate_homogenization_cases_checked']} cases, discrepancy within 1e-9), CFRP (5 grades), Controls ({len(controls)}/{len(controls)}): OK")
     return 0
 
 

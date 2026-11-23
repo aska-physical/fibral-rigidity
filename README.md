@@ -50,7 +50,7 @@ Fiber properties are loaded from [`data/carbon_fibers.json`](data/carbon_fibers.
 
 - [`PROOF.md`](PROOF.md) — Full mathematical derivations, scope boundaries, and prior-art citations.
 - [`data/carbon_fibers.json`](data/carbon_fibers.json) — Primary-sourced fiber and reference alloy properties with SHA-256 integrity check.
-- [`verify.py`](verify.py) — Deterministic checker (`sympy` symbolic proofs for $n=2..7$, `numpy` 60-case coordinate-space Schur-complement truss homogenizer, CFRP/HS benchmarks, and 6 must-fail falsification controls).
+- [`verify.py`](verify.py) — Deterministic checker (`sympy` symbolic proofs for $n=2..7$, `numpy` 60-case coordinate-space Schur-complement truss homogenizer, CFRP/HS benchmarks, and 7 must-fail falsification controls).
 - [`results/certificate.json`](results/certificate.json) — Committed machine-verifiable output certificate.
 
 ### Run Locally
@@ -60,7 +60,7 @@ python3 -m pip install numpy sympy
 python3 verify.py
 ```
 
-`python3 verify.py` recomputes every symbolic and numerical result from scratch, executes all 6 must-fail controls, and fails if any value differs from [`results/certificate.json`](results/certificate.json).
+`python3 verify.py` recomputes every symbolic and numerical result from scratch and executes all 7 rejecting controls. A failed check raises even under `python3 -O`. The numerical residual is stored as a pass or fail under 1e-9, not as the raw digits. The run still rejects a discrepancy of 1e-11 or more. The command fails if a check raises or if the certificate differs.
 
 ---
 

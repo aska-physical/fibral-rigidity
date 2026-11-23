@@ -167,7 +167,10 @@
     },
     {
       "control": "unbraced_incentre_has_shear_rigidity",
-      "observed_C44": 4.163e-17,
+      "rejected": true
+    },
+    {
+      "control": "planted_shear_stiffness_is_accepted",
       "rejected": true
     },
     {
@@ -236,7 +239,7 @@
       "gurtner_durand_isotropic_truss_bound_E_over_rhoE1": 0.1666666667,
       "nu_iso": 0.3040370243
     },
-    "max_numerical_analytical_discrepancy": 1.11e-16
+    "max_discrepancy_within_1e-9": true
   },
   "repository": "Foundation-0/fibral-rigidity",
   "symbolic_verification": {
