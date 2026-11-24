@@ -786,6 +786,82 @@ class TestFibralRigidityNanZoneB(unittest.TestCase):
                 f"deleted CWD check failed: rc={proc2.returncode} out={proc2.stdout!r} err={proc2.stderr!r}",
             )
 
+    def test_05_darwin_system_root_alias_normalization(self) -> None:
+        v = _load_verify_module()
+
+        root_lnk = types.SimpleNamespace(st_mode=stat.S_IFLNK | 0o777, st_uid=0)
+        user_lnk = types.SimpleNamespace(st_mode=stat.S_IFLNK | 0o777, st_uid=1000)
+
+        def _fake_readlink(p: str) -> str:
+            if p == "/var":
+                return "private/var"
+            if p == "/tmp":
+                return "private/tmp"
+            if p == "/etc":
+                return "private/etc"
+            raise OSError("unexpected readlink")
+
+        with (
+            mock.patch.object(v.sys, "platform", "darwin"),
+            mock.patch.object(v.os, "lstat", return_value=root_lnk),
+            mock.patch.object(v.os, "readlink", side_effect=_fake_readlink),
+        ):
+            _check(
+                v._validate_path_and_split(Path("/var/folders/xx/cert.json"), "t")
+                == ("/", ["private", "var", "folders", "xx", "cert.json"]),
+                "darwin /var normalization failed",
+            )
+            _check(
+                v._validate_path_and_split(Path("/tmp/cert.json"), "t")
+                == ("/", ["private", "tmp", "cert.json"]),
+                "darwin /tmp normalization failed",
+            )
+            _check(
+                v._validate_path_and_split(Path("/var/folders/xx/evil_link/cert.json"), "t")
+                == ("/", ["private", "var", "folders", "xx", "evil_link", "cert.json"]),
+                "nested planted symlink must remain in parts for O_NOFOLLOW",
+            )
+            _check(
+                v._normalize_darwin_system_prefix(Path("/tmp"), allow_exact=True) == Path("/private/tmp"),
+                "darwin exact PWD /tmp normalization failed",
+            )
+            _check(
+                v._validate_path_and_split(Path("/tmp"), "t") == ("/", ["tmp"]),
+                "exact /tmp leaf must not normalize",
+            )
+            _check(
+                v._validate_path_and_split(Path("/tmp/../etc/passwd"), "t")
+                == ("/", ["tmp", "..", "etc", "passwd"]),
+                "parent escape after /tmp must not normalize",
+            )
+
+        with (
+            mock.patch.object(v.sys, "platform", "darwin"),
+            mock.patch.object(v.os, "lstat", return_value=user_lnk),
+            mock.patch.object(v.os, "readlink", side_effect=_fake_readlink),
+        ):
+            _check(
+                v._validate_path_and_split(Path("/var/folders/xx/cert.json"), "t")
+                == ("/", ["var", "folders", "xx", "cert.json"]),
+                "non-root /var symlink must not normalize",
+            )
+        with (
+            mock.patch.object(v.sys, "platform", "darwin"),
+            mock.patch.object(v.os, "lstat", return_value=root_lnk),
+            mock.patch.object(v.os, "readlink", return_value="private/evil"),
+        ):
+            _check(
+                v._validate_path_and_split(Path("/var/folders/xx/cert.json"), "t")
+                == ("/", ["var", "folders", "xx", "cert.json"]),
+                "unexpected readlink target must not normalize",
+            )
+        with mock.patch.object(v.sys, "platform", "linux"):
+            _check(
+                v._validate_path_and_split(Path("/var/folders/xx/cert.json"), "t")
+                == ("/", ["var", "folders", "xx", "cert.json"]),
+                "non-darwin must not normalize",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

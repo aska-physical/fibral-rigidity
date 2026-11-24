@@ -168,11 +168,43 @@ def _open_dir_chain(anchor: str, parts: list[str], label: str, *, create_missing
     return dfd
 
 
+_DARWIN_SYSTEM_ROOT_ALIASES: tuple[tuple[str, str], ...] = (
+    ("/var", "/private/var"),
+    ("/tmp", "/private/tmp"),
+    ("/etc", "/private/etc"),
+)
+
+
+def _normalize_darwin_system_prefix(path: Path, *, allow_exact: bool = False) -> Path:
+    """Map verified root-owned macOS /var, /tmp, /etc aliases to /private/* without resolving user symlinks."""
+    if sys.platform != "darwin" or not path.is_absolute():
+        return path
+    parts = path.parts
+    min_parts = 2 if allow_exact else 3
+    if len(parts) < min_parts or parts[0] != "/" or ".." in parts:
+        return path
+    top = "/" + parts[1]
+    for alias, canonical in _DARWIN_SYSTEM_ROOT_ALIASES:
+        if top != alias:
+            continue
+        try:
+            st = os.lstat(alias)
+            if not stat.S_ISLNK(st.st_mode) or st.st_uid != 0:
+                return path
+            target = os.readlink(alias)
+            if target not in (canonical, canonical.lstrip("/")):
+                return path
+        except OSError:
+            return path
+        return Path(canonical, *parts[2:])
+    return path
+
+
 def _check_pwd_no_symlinks(label: str) -> None:
     pwd = os.environ.get("PWD")
     if pwd and os.path.isabs(pwd):
         _require_utf8_no_surrogate(pwd, f"{label} PWD")
-        pwd_path = Path(pwd)
+        pwd_path = _normalize_darwin_system_prefix(Path(pwd), allow_exact=True)
         pwd_parts = [p for p in pwd_path.parts[1:] if p not in ("", ".")]
         try:
             pwd_fd = _open_dir_chain(pwd_path.anchor, pwd_parts, f"{label} PWD")
@@ -193,8 +225,9 @@ def _validate_path_and_split(path: Any, label: str) -> tuple[str, list[str]]:
         _check_pwd_no_symlinks(label)
         rel_parts = [p for p in target.parts if p not in ("", ".")]
         return ".", rel_parts
-    abs_parts = [p for p in target.parts[1:] if p not in ("", ".")]
-    return target.anchor, abs_parts
+    norm = _normalize_darwin_system_prefix(target)
+    abs_parts = [p for p in norm.parts[1:] if p not in ("", ".")]
+    return norm.anchor, abs_parts
 
 
 def read_regular_bytes(path: Path, label: str, max_bytes: int = MAX_JSON_BYTES) -> bytes:
