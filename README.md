@@ -25,7 +25,7 @@ Every claim is labelled strictly per the [Foundation-0](https://github.com/Found
 | **Octagonal-pore $45^\circ$ shear ties ($F_3^+$)** | 12 non-intersecting pore chords/cell (exact length $2$ at $t=2-\sqrt{2}$); isotropic at $\alpha=2\sqrt{2}, \beta_{\text{iso}}=0.362323$ with $E_{\text{iso}} = 0.12805\,\bar{\rho} E_1$, $K_{\text{iso}} = 0.10891\,\bar{\rho} E_1$ | `VERIFIED` | `python3 verify.py` |
 | **Same-material bound check (honest limit)** | No pin-jointed truss beats the closed-cell plate Hashin–Shtrikman (HS) bound of the *same* solid ($0.1281 < 0.5115$ at $\bar{\rho}=5\%$, [Berger et al. 2017](https://pubmed.ncbi.nlm.nih.gov/28219078/)) | `PROVEN` / `KNOWN` | Must-fail #3 & #4 |
 | **CFRP specific-rigidity vs. metal HS bounds** | At $\bar{\rho}=5\%$ ($V_f=0.60$), isotropic-braced **T1100G** ($16.13$), **M55J** ($25.63$), and **K13D2U** ($40.01\text{ MPa}/(\text{kg/m}^3)$) beat the **closed-cell HS upper bounds** of Al 6061-T6 ($13.08$), Ti-6Al-4V ($13.18$), and Steel 4340 ($13.36$) | `VERIFIED` | `python3 verify.py` |
-| **Tensile vs. Euler buckling transition** | Solid T1100G rods buckle below $\bar{\rho}_{\text{crit}} = 4.00\%$; hollow tubes ($\eta = 0.80$) give $4.56\times$ gain ($\bar{\rho}_{\text{crit}} = 0.88\%$, and $0.16\%$ for K13D2U) | `PROVEN` & `VERIFIED` | `python3 verify.py` |
+| **Compressive kink-band & SP-8007 tube limit** | Pin-jointed ($K=1$, $r_g=r/2$) hollow tubes ($\eta=0.80$) give $4.56\times$ Euler gain **only** while $\sigma \le \min(\sigma_{\text{kink}}, \gamma_{\text{SP-8007}}\sigma_{\text{shell}})$; using SHA-256-pinned representative UD compressive engineering assumptions in `data/carbon_fibers.json` (`1200/1470/1500/750/350 MPa`, not primary filament-datasheet lower bounds) and axisymmetric shell estimate ($E_2=8\text{ GPa}, \nu_{12}=0.30$, isotropic SP-8007 $\gamma$, no $G_{LT}$; thin-shell $R/t \ge 10$ holds at $\eta=0.99$ with $R/t=99.5$ and not at $\eta=0.80$ with $R/t=4.5$), at $\bar{\rho}=5\%$ K13D2U is kink-band capped at **$350\text{ MPa}$** ($\text{effective gain } 1.0\times$, vs. $2,225.54\text{ MPa}$ ROM tensile), and ultra-thin $\eta=0.99$ tubes are shell-limited ($226.68\text{ MPa} < \sigma_{\text{kink}}$) | `VERIFIED` *(conditional on hashed UD allowables)* | `python3 verify.py` (Must-fail #8) |
 
 ---
 
@@ -33,16 +33,18 @@ Every claim is labelled strictly per the [Foundation-0](https://github.com/Found
 
 Fiber properties are loaded from [`data/carbon_fibers.json`](data/carbon_fibers.json) using official [Torayca Carbon Fiber](https://www.toraycma.com/products/carbon-fiber/) ([T300](https://www.toraycma.com/wp-content/uploads/T300-Data-Sheet.pdf), [Technical Manual](https://www.toraycma.com/wp-content/uploads/Torayca-Technical-Manual_4-28-2020.pdf), [T1100G](https://www.toraycma.com/wp-content/uploads/T1100G-Data-Sheet.pdf)) and [Mitsubishi DIALEAD Pitch Fiber](https://www.m-chemical.co.jp/carbon-fiber/en/product/tow/) ([K13D2U Datasheet](https://www.hajime.com.tw/Upload/product_201805210812374.pdf)) specifications:
 
-| Material / Architecture | $E_{\text{constituent}}$ (GPa) | $\rho_{\text{lattice}}$ ($\text{g/cm}^3$) | Graded $E_{[100]} / \rho$ ($\frac{\text{MPa}}{\text{kg/m}^3}$) | Isotropic $E_{\text{iso}} / \rho$ ($\frac{\text{MPa}}{\text{kg/m}^3}$) | Graded $K^* / \rho$ ($\frac{\text{MPa}}{\text{kg/m}^3}$) | Hollow Tube $\bar{\rho}_{\text{crit}}$ ($\eta=0.8$) |
+| Material / Architecture | $E_{\text{constituent}}$ (GPa) | $\rho_{\text{lattice}}$ ($\text{g/cm}^3$) | Graded $E_{[100]} / \rho$ ($\frac{\text{MPa}}{\text{kg/m}^3}$) | Isotropic $E_{\text{iso}} / \rho$ ($\frac{\text{MPa}}{\text{kg/m}^3}$) | Graded $K^* / \rho$ ($\frac{\text{MPa}}{\text{kg/m}^3}$) | Compressive $\bar{\rho}_{\text{crit}}$ ($\eta=0.8$, $\sigma_{\text{kink}}$) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Al 6061-T6 (HS Plate Upper Bound)** | 68.9 | 0.1350 | — | 13.08 | 8.75 | — |
 | **Ti-6Al-4V (HS Plate Upper Bound)** | 113.8 | 0.2215 | — | 13.18 | 8.95 | — |
 | **AISI 4340 Steel (HS Plate Upper Bound)** | 205.0 | 0.3925 | — | 13.36 | 8.43 | — |
-| **Torayca T300 CFRP** ($V_f=0.60$) | 139.4 | 0.0768 | 13.93 | 11.62 | 10.08 | 0.62% |
-| **Torayca T700S CFRP** ($V_f=0.60$) | 139.4 | 0.0780 | 13.72 | 11.44 | 9.93 | 0.87% |
-| **Torayca T1100G CFRP** ($V_f=0.60$, $\sigma_f=7.0\text{ GPa}$) | 195.8 | 0.0777 | **19.34** | **16.13** | **14.00** | 0.88% |
-| **Torayca M55J CFRP** ($V_f=0.60$) | 325.4 | 0.0813 | **30.72** | **25.63** | **22.24** | 0.30% |
-| **Mitsubishi K13D2U CFRP** ($V_f=0.60$) | 562.4 | 0.0900 | **47.96** | **40.01** | **34.72** | **0.16%** |
+| **Torayca T300 CFRP** ($V_f=0.60$) | 139.4 | 0.0768 | 13.93 | 11.62 | 10.08 | 0.350% |
+| **Torayca T700S CFRP** ($V_f=0.60$) | 139.4 | 0.0780 | 13.72 | 11.44 | 9.93 | 0.429% |
+| **Torayca T1100G CFRP** ($V_f=0.60$, $\sigma_f=7.0\text{ GPa}$) | 195.8 | 0.0777 | **19.34** | **16.13** | **14.00** | 0.312% |
+| **Torayca M55J CFRP** ($V_f=0.60$) | 325.4 | 0.0813 | **30.72** | **25.63** | **22.24** | 0.094% |
+| **Mitsubishi K13D2U CFRP** ($V_f=0.60$) | 562.4 | 0.0900 | **47.96** | **40.01** | **34.72** | **0.025%** |
+
+*(At $\bar{\rho}=5\%$, all five grades sit above their compressive Euler crossover, so hollow-tube compressive gain saturates at $1.0\times$ at the SHA-256-pinned representative UD compressive kink-band allowables in `data/carbon_fibers.json`: `1200 / 1470 / 1500 / 750 / 350 MPa` for `T300 / T700S / T1100G / M55J / K13D2U`, respectively. Tensile-crossover $\bar{\rho}_{\text{crit}}$ values remain recorded alongside compressive values in `results/certificate.json`, and `hollow_tube_eta08_sp8007_thin_shell_valid=false` explicitly flags that $R/t = 4.5 < 10$ at $\eta = 0.80$.)*
 
 ---
 
@@ -50,7 +52,7 @@ Fiber properties are loaded from [`data/carbon_fibers.json`](data/carbon_fibers.
 
 - [`PROOF.md`](PROOF.md) — Full mathematical derivations, scope boundaries, and prior-art citations.
 - [`data/carbon_fibers.json`](data/carbon_fibers.json) — Primary-sourced fiber and reference alloy properties with SHA-256 integrity check.
-- [`verify.py`](verify.py) — Deterministic checker (`sympy` symbolic proofs for $n=2..7$, `numpy` 60-case coordinate-space Schur-complement truss homogenizer, CFRP/HS benchmarks, and 7 must-fail falsification controls).
+- [`verify.py`](verify.py) — Deterministic checker (`sympy` symbolic proofs for $n=2..7$, `numpy` 60-case coordinate-space Schur-complement truss homogenizer, CFRP/HS benchmarks, and 8 must-fail falsification controls).
 - [`results/certificate.json`](results/certificate.json) — Committed machine-verifiable output certificate.
 
 ### Run Locally
@@ -60,7 +62,7 @@ python3 -m pip install numpy sympy
 python3 verify.py
 ```
 
-`python3 verify.py` recomputes every symbolic and numerical result from scratch and executes all 7 rejecting controls. A failed check raises even under `python3 -O`. The numerical residual is stored as a pass or fail under 1e-9, not as the raw digits. The run still rejects a discrepancy of 1e-11 or more. The command fails if a check raises or if the certificate differs.
+`python3 verify.py` recomputes every symbolic and numerical result from scratch and executes all 8 rejecting controls. A failed check raises even under `python3 -O`. The numerical residual is stored as a pass or fail under 1e-9, not as the raw digits. The run still rejects a discrepancy of 1e-11 or more. The command fails if a check raises or if the certificate differs.
 
 ---
 

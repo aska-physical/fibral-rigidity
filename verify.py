@@ -88,6 +88,17 @@ def strict_finite_max(*values: Any, name: str) -> float:
     return best
 
 
+def strict_finite_min(*values: Any, name: str) -> float:
+    """NaN-safe minimum: rejects any non-finite argument instead of silently dropping NaN."""
+    require(len(values) >= 1, f"{name} requires at least one value")
+    best = strict_finite(values[0], name)
+    for item in values[1:]:
+        cur = strict_finite(item, name)
+        if cur < best:
+            best = cur
+    return best
+
+
 def _require_utf8_no_surrogate(text: str, label: str) -> None:
     try:
         text.encode("utf-8")
@@ -770,6 +781,100 @@ def run_numerical_truss_checks() -> dict[str, Any]:
     }
 
 
+def evaluate_tubular_compressive_limit(
+    E1_GPa: float,
+    sig_kink_MPa: float,
+    eta_tube: float,
+    L_bar: float,
+    rho_bar: float = 0.05,
+    *,
+    E2_GPa: float = 8.0,
+    nu12: float = 0.30,
+    K_eff: float = 1.0,
+) -> dict[str, Any]:
+    """Compute pin-jointed (K=1) CFRP compressive strut limit across Euler, kink-band, and NASA SP-8007 shell buckling.
+
+    For a solid circular rod of outer radius r, radius of gyration is r_g = r / 2, so
+      sigma_Euler = pi^2 * E1 * (r_g / (K*L))^2 = pi^2 * E1 * r^2 / (4 * K^2 * L^2),
+    giving transition radius r/L = (2*K/pi) * sqrt(sigma_cap / E1) at K = 1 (pin-jointed truss strut).
+    Hollow tubes increase Euler buckling by (1 + eta^2)/(1 - eta^2) ONLY while axial stress stays
+    below min(sigma_kink, gamma_SP8007 * sigma_shell_ortho).
+
+    Thin-shell validity note: classical axisymmetric thin-shell buckling and the NASA SP-8007
+    knockdown factor assume R_mid / t >= 10 (eta >= 19/21 ~= 0.905). For thicker tubes (e.g.
+    eta = 0.80, R_mid / t = 4.5), `sp8007_thin_shell_valid_R_over_t_ge_10` is False and
+    `sigma_shell_sp8007_MPa` is reported solely as an upper reference scale (kink-band governs by >20x).
+    """
+    E1 = strict_finite(E1_GPa, "E1_GPa", positive=True)
+    sig_kink = strict_finite(sig_kink_MPa, "sig_kink_MPa", positive=True)
+    eta = strict_finite(eta_tube, "eta_tube", non_negative=True)
+    require(eta < 1.0, f"eta_tube must be < 1.0, got {eta!r}")
+    Lb = strict_finite(L_bar, "L_bar", positive=True)
+    rho = strict_finite(rho_bar, "rho_bar", positive=True)
+    E2 = strict_finite(E2_GPa, "E2_GPa", positive=True)
+    nu_12 = strict_finite(nu12, "nu12", positive=True)
+    require(nu_12 < 0.5, f"nu12 must be < 0.5, got {nu_12!r}")
+    K = strict_finite(K_eff, "K_eff", positive=True)
+
+    tube_gain = (1.0 + eta**2) / (1.0 - eta**2)
+    if eta == 0.0:
+        R_over_t: float | None = None
+        thin_shell_valid = False
+        gamma_sp = 1.0
+        sig_shell_kd_MPa = 1.0e12
+        sig_comp_cap_MPa = sig_kink
+    else:
+        R_over_t = (1.0 + eta) / (2.0 * (1.0 - eta))
+        thin_shell_valid = bool(R_over_t >= 10.0)
+        gamma_sp = 1.0 - 0.901 * (1.0 - math.exp(-math.sqrt(R_over_t) / 16.0))
+        nu_21 = nu_12 * (E2 / E1)
+        require(nu_12 * nu_21 < 1.0, "orthotropic Poisson product nu12*nu21 must be < 1")
+        sig_shell_ortho_MPa = math.sqrt(E1 * E2) * (1.0 / R_over_t) / math.sqrt(3.0 * (1.0 - nu_12 * nu_21)) * 1000.0
+        sig_shell_kd_MPa = gamma_sp * sig_shell_ortho_MPa
+        sig_comp_cap_MPa = strict_finite_min(sig_kink, sig_shell_kd_MPa, name="sig_comp_cap_MPa")
+
+    bar_geom_prefactor = (12.0 + 6.0 * math.sqrt(2.0)) * math.pi * (Lb**3) / 8.0
+    r_over_L_solid_comp = (2.0 * K / math.pi) * math.sqrt((sig_kink / 1000.0) / E1)
+    rho_crit_solid_comp = bar_geom_prefactor * (r_over_L_solid_comp**2)
+    r_over_L_tube_equiv = (2.0 * K / math.pi) * math.sqrt((sig_comp_cap_MPa / 1000.0) / E1)
+    rho_crit_tube_comp = bar_geom_prefactor * (r_over_L_tube_equiv**2) / tube_gain
+
+    # Actual compressive allowable stress at benchmark relative density rho_bar (unit cell volume = 8)
+    A_dimless = (8.0 * rho) / ((12.0 + 6.0 * math.sqrt(2.0)) * Lb)
+    I_solid = (A_dimless**2) / (4.0 * math.pi)
+    I_tube = I_solid * tube_gain
+    sig_euler_solid_MPa = (math.pi**2 * (E1 * 1000.0) * I_solid) / (A_dimless * ((K * Lb) ** 2))
+    sig_euler_tube_MPa = (math.pi**2 * (E1 * 1000.0) * I_tube) / (A_dimless * ((K * Lb) ** 2))
+    sig_allow_solid_MPa = strict_finite_min(sig_euler_solid_MPa, sig_kink, name="sig_allow_solid_MPa")
+    sig_allow_tube_MPa = strict_finite_min(sig_euler_tube_MPa, sig_kink, sig_shell_kd_MPa, name="sig_allow_tube_MPa")
+    if sig_allow_tube_MPa == sig_kink:
+        mode = "kink_band_compression"
+    elif sig_allow_tube_MPa == sig_shell_kd_MPa:
+        mode = "sp8007_local_shell_buckling"
+    else:
+        mode = "euler_column_buckling"
+
+    return {
+        "K_eff_pin_jointed": K,
+        "tube_euler_gain": tube_gain,
+        "R_over_t_mid": R_over_t,
+        "sp8007_thin_shell_valid_R_over_t_ge_10": thin_shell_valid,
+        "sp8007_knockdown_gamma": gamma_sp,
+        "sigma_kink_MPa": sig_kink,
+        "sigma_shell_sp8007_MPa": sig_shell_kd_MPa,
+        "sigma_comp_cap_MPa": sig_comp_cap_MPa,
+        "r_over_L_solid_comp": r_over_L_solid_comp,
+        "rho_crit_solid_comp": rho_crit_solid_comp,
+        "rho_crit_tube_comp": rho_crit_tube_comp,
+        "sigma_euler_solid_5pct_MPa": sig_euler_solid_MPa,
+        "sigma_euler_tube_5pct_MPa": sig_euler_tube_MPa,
+        "sigma_allow_solid_5pct_MPa": sig_allow_solid_MPa,
+        "sigma_allow_tube_5pct_MPa": sig_allow_tube_MPa,
+        "effective_tube_gain_5pct": sig_allow_tube_MPa / sig_allow_solid_MPa,
+        "governing_mode_5pct": mode,
+    }
+
+
 def run_cfrp_benchmark_checks(num_res: dict[str, Any], raw_data: dict[str, Any] | None = None) -> dict[str, Any]:
     require(type(num_res) is dict and type(num_res.get("isotropic_braced_point")) is dict, "num_res missing isotropic_braced_point")
     raw = load_strict_json_file(DATA_PATH, "data/carbon_fibers.json") if raw_data is None else raw_data
@@ -826,26 +931,36 @@ def run_cfrp_benchmark_checks(num_res: dict[str, Any], raw_data: dict[str, Any] 
     eta_tube = 0.80
     tube_gain = (1.0 + eta_tube**2) / (1.0 - eta_tube**2)
     for fib in fiber_rows:
-        require(type(fib) is dict and all(k in fib for k in ("id", "Ef_GPa", "sigma_ult_MPa", "rho_f_g_cm3")), "invalid fiber entry")
+        require(
+            type(fib) is dict and all(k in fib for k in ("id", "Ef_GPa", "sigma_ult_MPa", "sigma_kink_comp_Vf60_MPa", "rho_f_g_cm3")),
+            "invalid fiber entry",
+        )
         require(type(fib["id"]) is str and len(fib["id"]) >= 1, "fiber id must be non-empty str")
         Ef = strict_finite(fib["Ef_GPa"], "Ef_GPa", positive=True)
         sig_f = strict_finite(fib["sigma_ult_MPa"], "sigma_ult_MPa", positive=True)
+        sig_kink_MPa = strict_finite(fib["sigma_kink_comp_Vf60_MPa"], "sigma_kink_comp_Vf60_MPa", positive=True)
         rho_f = strict_finite(fib["rho_f_g_cm3"], "rho_f_g_cm3", positive=True)
         E1_c = Vf * Ef + (1.0 - Vf) * Em
         rho_c = Vf * rho_f + (1.0 - Vf) * rho_m
         sig_c_MPa = E1_c * ((sig_f / 1000.0) / Ef) * 1000.0
+        require(
+            sig_kink_MPa < 0.80 * sig_c_MPa,
+            f"fiber {fib['id']} compressive kink allowable ({sig_kink_MPa} MPa) must be strictly below 80% of ROM tensile strength ({sig_c_MPa:.2f} MPa)",
+        )
         rho_lat = rho_bar_ref * rho_c
         K_g, E100_g = norm_K_opt * rho_bar_ref * E1_c, norm_E100_opt * rho_bar_ref * E1_c
         E_i, K_i = norm_E_iso * rho_bar_ref * E1_c, norm_K_iso * rho_bar_ref * E1_c
         s_K, s_E100, s_Ei = K_g / rho_lat, E100_g / rho_lat, E_i / rho_lat
         r_over_L = math.sqrt(4.0 * (sig_c_MPa / 1000.0) / (math.pi**2 * E1_c))
         rho_crit_solid = (12.0 + 6.0 * math.sqrt(2.0)) * (math.pi * (L_bar**2) * (r_over_L**2)) * L_bar / 8.0
+        comp_env = evaluate_tubular_compressive_limit(E1_c, sig_kink_MPa, eta_tube, L_bar, rho_bar_ref)
         fibers.append({
             "fiber_id": fib["id"],
             "Ef_GPa": Ef,
             "E1_CFRP_Vf60_GPa": round(E1_c, 4),
             "rho_CFRP_Vf60_g_cm3": round(rho_c, 4),
             "sigma_tensile_CFRP_Vf60_MPa": round(sig_c_MPa, 2),
+            "sigma_kink_comp_CFRP_Vf60_MPa": round(sig_kink_MPa, 2),
             "at_5pct_relative_density": {
                 "rho_eff_g_cm3": round(rho_lat, 5),
                 "K_graded_incentre_GPa": round(K_g, 6),
@@ -859,10 +974,22 @@ def run_cfrp_benchmark_checks(num_res: dict[str, Any], raw_data: dict[str, Any] 
                 "exceeds_all_metal_HS_specific_K_bounds": bool(s_K > max_m_K),
             },
             "buckling_vs_tensile_envelope": {
+                "K_eff_pin_jointed": comp_env["K_eff_pin_jointed"],
                 "solid_rod_critical_r_over_L": round(r_over_L, 6),
                 "solid_rod_critical_rho_bar": round(rho_crit_solid, 6),
                 "hollow_tube_eta08_buckling_gain": round(tube_gain, 6),
                 "hollow_tube_eta08_critical_rho_bar": round(rho_crit_solid / tube_gain, 6),
+                "hollow_tube_eta08_R_over_t_mid": round(comp_env["R_over_t_mid"], 4),
+                "hollow_tube_eta08_sp8007_thin_shell_valid": comp_env["sp8007_thin_shell_valid_R_over_t_ge_10"],
+                "hollow_tube_eta08_sp8007_gamma": round(comp_env["sp8007_knockdown_gamma"], 6),
+                "hollow_tube_eta08_sp8007_shell_MPa": round(comp_env["sigma_shell_sp8007_MPa"], 2),
+                "compressive_cap_MPa": round(comp_env["sigma_comp_cap_MPa"], 2),
+                "solid_rod_critical_rho_bar_compressive": round(comp_env["rho_crit_solid_comp"], 6),
+                "hollow_tube_eta08_critical_rho_bar_compressive": round(comp_env["rho_crit_tube_comp"], 6),
+                "at_5pct_sigma_euler_tube_MPa": round(comp_env["sigma_euler_tube_5pct_MPa"], 2),
+                "at_5pct_sigma_allow_tube_MPa": round(comp_env["sigma_allow_tube_5pct_MPa"], 2),
+                "at_5pct_effective_tube_gain": round(comp_env["effective_tube_gain_5pct"], 4),
+                "at_5pct_governing_compressive_mode": comp_env["governing_mode_5pct"],
             },
         })
 
@@ -885,7 +1012,10 @@ def shear_within_bound(stiffness: np.ndarray, bound: float = NUMERICAL_BOUND) ->
     return shear_max <= bound_val
 
 
-def run_must_fail_controls(num_res: dict[str, Any]) -> list[dict[str, Any]]:
+def run_must_fail_controls(
+    num_res: dict[str, Any],
+    raw_data: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     require(type(num_res) is dict and type(num_res.get("isotropic_braced_point")) is dict, "num_res missing isotropic_braced_point")
     c_val = 2.0 - math.sqrt(2.0)
     coords, bars = build_fn_bars(3, c_val, 1.0, 1.0, 1.0)
@@ -926,6 +1056,57 @@ def run_must_fail_controls(num_res: dict[str, Any]) -> list[dict[str, Any]]:
     poisson_moves = abs(nu_off - 0.20) > 0.02
     require(poisson_moves, "equal-area Poisson ratio stayed at the unit-spring value")
 
+    raw = load_strict_json_file(DATA_PATH, "data/carbon_fibers.json") if raw_data is None else raw_data
+    require(type(raw) is dict and type(raw.get("matrix_reference")) is dict, "data/carbon_fibers.json missing matrix_reference")
+    mat = raw["matrix_reference"]
+    Em = strict_finite(mat.get("E_GPa"), "matrix_reference.E_GPa", positive=True)
+    Vf = strict_finite(mat.get("fiber_volume_fraction_Vf"), "matrix_reference.fiber_volume_fraction_Vf", positive=True)
+    require(Vf < 1.0, "fiber_volume_fraction_Vf must be < 1.0")
+    fiber_rows = raw.get("carbon_fibers")
+    require(type(fiber_rows) is list and len(fiber_rows) >= 1, "carbon_fibers must be a non-empty list")
+
+    k13_E1_c: float | None = None
+    k13_sig_tensile_MPa: float | None = None
+    k13_sig_kink_MPa: float | None = None
+    all_grades_kink_below_tensile = True
+    for fib in fiber_rows:
+        require(
+            type(fib) is dict and all(k in fib for k in ("id", "Ef_GPa", "sigma_ult_MPa", "sigma_kink_comp_Vf60_MPa")),
+            "invalid fiber entry in control #8",
+        )
+        Ef = strict_finite(fib["Ef_GPa"], "Ef_GPa", positive=True)
+        sig_f = strict_finite(fib["sigma_ult_MPa"], "sigma_ult_MPa", positive=True)
+        sig_k = strict_finite(fib["sigma_kink_comp_Vf60_MPa"], "sigma_kink_comp_Vf60_MPa", positive=True)
+        E1_c = Vf * Ef + (1.0 - Vf) * Em
+        sig_t = E1_c * ((sig_f / 1000.0) / Ef) * 1000.0
+        if not (sig_k < 0.80 * sig_t):
+            all_grades_kink_below_tensile = False
+        if fib["id"] == "K13D2U":
+            k13_E1_c = E1_c
+            k13_sig_tensile_MPa = sig_t
+            k13_sig_kink_MPa = sig_k
+    require(
+        k13_E1_c is not None and k13_sig_tensile_MPa is not None and k13_sig_kink_MPa is not None,
+        "K13D2U entry missing from data/carbon_fibers.json",
+    )
+
+    L_bar_ctrl = 2.0 * (math.sqrt(2.0) - 1.0)
+    k13_eta08 = evaluate_tubular_compressive_limit(k13_E1_c, k13_sig_kink_MPa, 0.80, L_bar_ctrl, 0.05)
+    k13_eta08_tensile = evaluate_tubular_compressive_limit(k13_E1_c, k13_sig_tensile_MPa, 0.80, L_bar_ctrl, 0.05)
+    k13_eta099 = evaluate_tubular_compressive_limit(k13_E1_c, k13_sig_kink_MPa, 0.99, L_bar_ctrl, 0.05)
+    kink_and_shell_cap_tube_gain = bool(
+        all_grades_kink_below_tensile
+        and k13_eta08["governing_mode_5pct"] == "kink_band_compression"
+        and k13_eta08["sigma_allow_tube_5pct_MPa"] < k13_eta08_tensile["sigma_allow_tube_5pct_MPa"]
+        and k13_eta08["sigma_allow_tube_5pct_MPa"] < 0.5 * k13_sig_tensile_MPa
+        and k13_eta08["effective_tube_gain_5pct"] <= 1.0
+        and k13_eta099["sp8007_thin_shell_valid_R_over_t_ge_10"]
+        and k13_eta099["governing_mode_5pct"] == "sp8007_local_shell_buckling"
+        and k13_eta099["sigma_allow_tube_5pct_MPa"] < k13_sig_kink_MPa
+        and k13_eta099["effective_tube_gain_5pct"] < 1.0
+    )
+    require(kink_and_shell_cap_tube_gain, "kink-band and SP-8007 shell limits failed to cap hollow-tube gain below ROM tensile")
+
     return [
         {"control": "equal_area_saturates_bulk_bound", "rejected": equal_area_misses_bound, "observed_K_over_Kmax": round(float(K_eq / K_max_eq), 8)},
         {"control": "unbraced_incentre_has_shear_rigidity", "rejected": unbraced_has_no_shear},
@@ -934,6 +1115,13 @@ def run_must_fail_controls(num_res: dict[str, Any]) -> list[dict[str, Any]]:
         {"control": "isotropic_truss_exceeds_same_material_HS_plate_bound", "rejected": below_same_material_plate, "truss_E_over_rhoE1": round(e_iso, 8), "hs_plate_E_over_rhoEs_at_5pct": round(E_hs / 0.05, 8)},
         {"control": "cut_cross_bar_preserves_axial_stiffness", "rejected": cut_breaks_axial, "C11_after_cut": round(float(C_cut[0, 0]), 10), "C22_after_cut": round(float(C_cut[1, 1]), 10)},
         {"control": "unit_spring_poisson_holds_for_equal_area_bars_at_general_t", "rejected": poisson_moves, "nu_100_at_t035_equal_area": round(nu_off, 8), "unit_spring_nu_100": 0.2},
+        {
+            "control": "tensile_strength_and_uncapped_tube_gain_govern_cfrp_compression",
+            "rejected": kink_and_shell_cap_tube_gain,
+            "k13_rom_tensile_MPa": round(k13_sig_tensile_MPa, 2),
+            "k13_eta08_allow_MPa_at_5pct": round(k13_eta08["sigma_allow_tube_5pct_MPa"], 2),
+            "k13_eta099_sp8007_shell_MPa": round(k13_eta099["sigma_shell_sp8007_MPa"], 2),
+        },
     ]
 
 
@@ -957,7 +1145,7 @@ def main(argv: list[str] | None = None) -> int:
         sym = run_symbolic_checks()
         num = run_numerical_truss_checks()
         cfrp = run_cfrp_benchmark_checks(num, raw_data=raw_data)
-        controls = run_must_fail_controls(num)
+        controls = run_must_fail_controls(num, raw_data=raw_data)
         cert = {
             "repository": "Foundation-0/fibral-rigidity",
             "certificate_version": "1.0.0",

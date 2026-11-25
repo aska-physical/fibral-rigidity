@@ -6,7 +6,8 @@
     "E_GPa": 3.5,
     "rho_g_cm3": 1.20,
     "fiber_volume_fraction_Vf": 0.60,
-    "note": "Unidirectional axial modulus computed by longitudinal rule of mixtures E1 = Vf * Ef + (1 - Vf) * Em; composite density rho_c = Vf * rho_f + (1 - Vf) * rho_m."
+    "note": "Unidirectional axial modulus computed by longitudinal rule of mixtures E1 = Vf * Ef + (1 - Vf) * Em; composite density rho_c = Vf * rho_f + (1 - Vf) * rho_m.",
+    "compressive_allowables_note": "Each fiber row's sigma_kink_comp_Vf60_MPa is a representative UD (Vf=0.60 in epoxy) compressive kink-band engineering assumption (NOT a primary filament-datasheet lower bound), included in this SHA-256-pinned data file so all compressive envelope calculations are cryptographically bound."
   },
   "carbon_fibers": [
     {
@@ -15,6 +16,8 @@
       "series": "Standard Modulus PAN",
       "Ef_GPa": 230.0,
       "sigma_ult_MPa": 3530.0,
+      "sigma_kink_comp_Vf60_MPa": 1200.0,
+      "sigma_kink_comp_basis": "Representative UD Vf=0.60 epoxy compressive kink-band engineering assumption for standard-modulus PAN",
       "strain_ult_pct": 1.5,
       "rho_f_g_cm3": 1.76,
       "sources": [
@@ -28,6 +31,8 @@
       "series": "Standard Modulus / High Strength PAN",
       "Ef_GPa": 230.0,
       "sigma_ult_MPa": 4900.0,
+      "sigma_kink_comp_Vf60_MPa": 1470.0,
+      "sigma_kink_comp_basis": "Representative UD Vf=0.60 epoxy compressive kink-band engineering assumption for high-strength PAN",
       "strain_ult_pct": 2.1,
       "rho_f_g_cm3": 1.80,
       "sources": [
@@ -41,6 +46,8 @@
       "series": "Intermediate Modulus / Ultra-High Tensile Strength PAN",
       "Ef_GPa": 324.0,
       "sigma_ult_MPa": 7000.0,
+      "sigma_kink_comp_Vf60_MPa": 1500.0,
+      "sigma_kink_comp_basis": "Representative UD Vf=0.60 epoxy compressive kink-band engineering assumption for intermediate-modulus PAN",
       "strain_ult_pct": 2.0,
       "rho_f_g_cm3": 1.79,
       "sources": [
@@ -54,6 +61,8 @@
       "series": "High Modulus PAN (MJ Series)",
       "Ef_GPa": 540.0,
       "sigma_ult_MPa": 4020.0,
+      "sigma_kink_comp_Vf60_MPa": 750.0,
+      "sigma_kink_comp_basis": "Representative UD Vf=0.60 epoxy compressive kink-band engineering assumption for high-modulus PAN",
       "strain_ult_pct": 0.8,
       "rho_f_g_cm3": 1.91,
       "sources": [
@@ -67,6 +76,8 @@
       "series": "Ultra-High Modulus Coal-Tar Pitch",
       "Ef_GPa": 935.0,
       "sigma_ult_MPa": 3700.0,
+      "sigma_kink_comp_Vf60_MPa": 350.0,
+      "sigma_kink_comp_basis": "Representative UD Vf=0.60 epoxy compressive kink-band engineering assumption for ultra-high-modulus coal-tar pitch fiber",
       "strain_ult_pct": 0.4,
       "rho_f_g_cm3": 2.20,
       "sources": [
