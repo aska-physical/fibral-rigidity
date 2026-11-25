@@ -695,7 +695,8 @@ class TestFibralRigidityNanZoneB(unittest.TestCase):
                 out_buf, err_buf = io.StringIO(), io.StringIO()
                 with redirect_stdout(out_buf), redirect_stderr(err_buf):
                     rc = v.main([])
-                _check(rc == 0 and "[PASS] Symbolic (n=2..7)" in out_buf.getvalue() and "Controls (7/7): OK" in out_buf.getvalue(),
+                n_ctrl = len(disk_cert["must_fail_controls"])
+                _check(rc == 0 and "[PASS] Symbolic (n=2..7)" in out_buf.getvalue() and f"Controls ({n_ctrl}/{n_ctrl}): OK" in out_buf.getvalue(),
                        f"clean main([]) failed: rc={rc} out={out_buf.getvalue()!r} err={err_buf.getvalue()!r}")
 
                 # 2. --write to temp path produces byte-identical certificate to committed results/certificate.json

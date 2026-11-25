@@ -19,13 +19,24 @@
           "specific_K_graded_MPa_per_kg_m3": 10.0839
         },
         "buckling_vs_tensile_envelope": {
+          "K_eff_pin_jointed": 1.0,
+          "at_5pct_effective_tube_gain": 1.0,
+          "at_5pct_governing_compressive_mode": "kink_band_compression",
+          "at_5pct_sigma_allow_tube_MPa": 1200.0,
+          "at_5pct_sigma_euler_tube_MPa": 17129.68,
+          "compressive_cap_MPa": 1200.0,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.006245,
+          "hollow_tube_eta08_critical_rho_bar_compressive": 0.003503,
+          "hollow_tube_eta08_sp8007_gamma": 0.888123,
+          "hollow_tube_eta08_sp8007_shell_MPa": 3815.06,
           "solid_rod_critical_r_over_L": 0.078868,
-          "solid_rod_critical_rho_bar": 0.028449
+          "solid_rod_critical_rho_bar": 0.028449,
+          "solid_rod_critical_rho_bar_compressive": 0.015957
         },
         "fiber_id": "T300",
         "rho_CFRP_Vf60_g_cm3": 1.536,
+        "sigma_kink_comp_CFRP_Vf60_MPa": 1200.0,
         "sigma_tensile_CFRP_Vf60_MPa": 2139.49
       },
       {
@@ -44,13 +55,24 @@
           "specific_K_graded_MPa_per_kg_m3": 9.9288
         },
         "buckling_vs_tensile_envelope": {
+          "K_eff_pin_jointed": 1.0,
+          "at_5pct_effective_tube_gain": 1.0,
+          "at_5pct_governing_compressive_mode": "kink_band_compression",
+          "at_5pct_sigma_allow_tube_MPa": 1470.0,
+          "at_5pct_sigma_euler_tube_MPa": 17129.68,
+          "compressive_cap_MPa": 1470.0,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.008669,
+          "hollow_tube_eta08_critical_rho_bar_compressive": 0.004291,
+          "hollow_tube_eta08_sp8007_gamma": 0.888123,
+          "hollow_tube_eta08_sp8007_shell_MPa": 3815.06,
           "solid_rod_critical_r_over_L": 0.092921,
-          "solid_rod_critical_rho_bar": 0.039491
+          "solid_rod_critical_rho_bar": 0.039491,
+          "solid_rod_critical_rho_bar_compressive": 0.019547
         },
         "fiber_id": "T700S",
         "rho_CFRP_Vf60_g_cm3": 1.56,
+        "sigma_kink_comp_CFRP_Vf60_MPa": 1470.0,
         "sigma_tensile_CFRP_Vf60_MPa": 2969.83
       },
       {
@@ -69,13 +91,24 @@
           "specific_K_graded_MPa_per_kg_m3": 13.9997
         },
         "buckling_vs_tensile_envelope": {
+          "K_eff_pin_jointed": 1.0,
+          "at_5pct_effective_tube_gain": 1.0,
+          "at_5pct_governing_compressive_mode": "kink_band_compression",
+          "at_5pct_sigma_allow_tube_MPa": 1500.0,
+          "at_5pct_sigma_euler_tube_MPa": 24060.19,
+          "compressive_cap_MPa": 1500.0,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.008791,
+          "hollow_tube_eta08_critical_rho_bar_compressive": 0.003117,
+          "hollow_tube_eta08_sp8007_gamma": 0.888123,
+          "hollow_tube_eta08_sp8007_shell_MPa": 4518.05,
           "solid_rod_critical_r_over_L": 0.093574,
-          "solid_rod_critical_rho_bar": 0.040048
+          "solid_rod_critical_rho_bar": 0.040048,
+          "solid_rod_critical_rho_bar_compressive": 0.0142
         },
         "fiber_id": "T1100G",
         "rho_CFRP_Vf60_g_cm3": 1.554,
+        "sigma_kink_comp_CFRP_Vf60_MPa": 1500.0,
         "sigma_tensile_CFRP_Vf60_MPa": 4230.25
       },
       {
@@ -94,13 +127,24 @@
           "specific_K_graded_MPa_per_kg_m3": 22.2359
         },
         "buckling_vs_tensile_envelope": {
+          "K_eff_pin_jointed": 1.0,
+          "at_5pct_effective_tube_gain": 1.0,
+          "at_5pct_governing_compressive_mode": "kink_band_compression",
+          "at_5pct_sigma_allow_tube_MPa": 750.0,
+          "at_5pct_sigma_euler_tube_MPa": 39985.63,
+          "compressive_cap_MPa": 750.0,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.003029,
+          "hollow_tube_eta08_critical_rho_bar_compressive": 0.000938,
+          "hollow_tube_eta08_sp8007_gamma": 0.888123,
+          "hollow_tube_eta08_sp8007_shell_MPa": 5820.16,
           "solid_rod_critical_r_over_L": 0.054928,
-          "solid_rod_critical_rho_bar": 0.013799
+          "solid_rod_critical_rho_bar": 0.013799,
+          "solid_rod_critical_rho_bar_compressive": 0.004272
         },
         "fiber_id": "M55J",
         "rho_CFRP_Vf60_g_cm3": 1.626,
+        "sigma_kink_comp_CFRP_Vf60_MPa": 750.0,
         "sigma_tensile_CFRP_Vf60_MPa": 2422.42
       },
       {
@@ -119,13 +163,24 @@
           "specific_K_graded_MPa_per_kg_m3": 34.716
         },
         "buckling_vs_tensile_envelope": {
+          "K_eff_pin_jointed": 1.0,
+          "at_5pct_effective_tube_gain": 1.0,
+          "at_5pct_governing_compressive_mode": "kink_band_compression",
+          "at_5pct_sigma_allow_tube_MPa": 350.0,
+          "at_5pct_sigma_euler_tube_MPa": 69108.53,
+          "compressive_cap_MPa": 350.0,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.00161,
+          "hollow_tube_eta08_critical_rho_bar_compressive": 0.000253,
+          "hollow_tube_eta08_sp8007_gamma": 0.888123,
+          "hollow_tube_eta08_sp8007_shell_MPa": 7647.97,
           "solid_rod_critical_r_over_L": 0.040047,
-          "solid_rod_critical_rho_bar": 0.007335
+          "solid_rod_critical_rho_bar": 0.007335,
+          "solid_rod_critical_rho_bar_compressive": 0.001154
         },
         "fiber_id": "K13D2U",
         "rho_CFRP_Vf60_g_cm3": 1.8,
+        "sigma_kink_comp_CFRP_Vf60_MPa": 350.0,
         "sigma_tensile_CFRP_Vf60_MPa": 2225.54
       }
     ],
@@ -194,6 +249,12 @@
       "nu_100_at_t035_equal_area": 0.1211711,
       "rejected": true,
       "unit_spring_nu_100": 0.2
+    },
+    {
+      "control": "tensile_strength_and_uncapped_tube_gain_govern_cfrp_compression",
+      "k13_eta08_allow_MPa_at_5pct": 350.0,
+      "k13_eta099_sp8007_shell_MPa": 226.68,
+      "rejected": true
     }
   ],
   "numerical_homogenization": {
