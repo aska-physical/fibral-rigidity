@@ -1,0 +1,45 @@
+{
+  "claim_rejected": "every length pair in the box has a positive-definite equilibrium",
+  "corners": [
+    {
+      "lengths": [
+        0.7,
+        0.9
+      ],
+      "min_eigenvalue_above_1e-3": true
+    },
+    {
+      "lengths": [
+        0.7,
+        1.5
+      ],
+      "min_eigenvalue_above_1e-3": true
+    },
+    {
+      "lengths": [
+        1.3,
+        0.9
+      ],
+      "min_eigenvalue_above_1e-3": true
+    },
+    {
+      "lengths": [
+        1.3,
+        1.5
+      ],
+      "min_eigenvalue_above_1e-3": true
+    }
+  ],
+  "interior_lengths": [
+    0.9,
+    1.1
+  ],
+  "interior_on_line_roots": 2,
+  "interior_positive_definite_equilibrium": false,
+  "neighbor_lengths": [
+    0.9,
+    1.2
+  ],
+  "neighbor_positive_definite": true,
+  "repository": "aska-physical/fibral-rigidity"
+}
