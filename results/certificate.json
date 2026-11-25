@@ -25,11 +25,13 @@
           "at_5pct_sigma_allow_tube_MPa": 1200.0,
           "at_5pct_sigma_euler_tube_MPa": 17129.68,
           "compressive_cap_MPa": 1200.0,
+          "hollow_tube_eta08_R_over_t_mid": 4.5,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.006245,
           "hollow_tube_eta08_critical_rho_bar_compressive": 0.003503,
           "hollow_tube_eta08_sp8007_gamma": 0.888123,
           "hollow_tube_eta08_sp8007_shell_MPa": 3815.06,
+          "hollow_tube_eta08_sp8007_thin_shell_valid": false,
           "solid_rod_critical_r_over_L": 0.078868,
           "solid_rod_critical_rho_bar": 0.028449,
           "solid_rod_critical_rho_bar_compressive": 0.015957
@@ -61,11 +63,13 @@
           "at_5pct_sigma_allow_tube_MPa": 1470.0,
           "at_5pct_sigma_euler_tube_MPa": 17129.68,
           "compressive_cap_MPa": 1470.0,
+          "hollow_tube_eta08_R_over_t_mid": 4.5,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.008669,
           "hollow_tube_eta08_critical_rho_bar_compressive": 0.004291,
           "hollow_tube_eta08_sp8007_gamma": 0.888123,
           "hollow_tube_eta08_sp8007_shell_MPa": 3815.06,
+          "hollow_tube_eta08_sp8007_thin_shell_valid": false,
           "solid_rod_critical_r_over_L": 0.092921,
           "solid_rod_critical_rho_bar": 0.039491,
           "solid_rod_critical_rho_bar_compressive": 0.019547
@@ -97,11 +101,13 @@
           "at_5pct_sigma_allow_tube_MPa": 1500.0,
           "at_5pct_sigma_euler_tube_MPa": 24060.19,
           "compressive_cap_MPa": 1500.0,
+          "hollow_tube_eta08_R_over_t_mid": 4.5,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.008791,
           "hollow_tube_eta08_critical_rho_bar_compressive": 0.003117,
           "hollow_tube_eta08_sp8007_gamma": 0.888123,
           "hollow_tube_eta08_sp8007_shell_MPa": 4518.05,
+          "hollow_tube_eta08_sp8007_thin_shell_valid": false,
           "solid_rod_critical_r_over_L": 0.093574,
           "solid_rod_critical_rho_bar": 0.040048,
           "solid_rod_critical_rho_bar_compressive": 0.0142
@@ -133,11 +139,13 @@
           "at_5pct_sigma_allow_tube_MPa": 750.0,
           "at_5pct_sigma_euler_tube_MPa": 39985.63,
           "compressive_cap_MPa": 750.0,
+          "hollow_tube_eta08_R_over_t_mid": 4.5,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.003029,
           "hollow_tube_eta08_critical_rho_bar_compressive": 0.000938,
           "hollow_tube_eta08_sp8007_gamma": 0.888123,
           "hollow_tube_eta08_sp8007_shell_MPa": 5820.16,
+          "hollow_tube_eta08_sp8007_thin_shell_valid": false,
           "solid_rod_critical_r_over_L": 0.054928,
           "solid_rod_critical_rho_bar": 0.013799,
           "solid_rod_critical_rho_bar_compressive": 0.004272
@@ -169,11 +177,13 @@
           "at_5pct_sigma_allow_tube_MPa": 350.0,
           "at_5pct_sigma_euler_tube_MPa": 69108.53,
           "compressive_cap_MPa": 350.0,
+          "hollow_tube_eta08_R_over_t_mid": 4.5,
           "hollow_tube_eta08_buckling_gain": 4.555556,
           "hollow_tube_eta08_critical_rho_bar": 0.00161,
           "hollow_tube_eta08_critical_rho_bar_compressive": 0.000253,
           "hollow_tube_eta08_sp8007_gamma": 0.888123,
           "hollow_tube_eta08_sp8007_shell_MPa": 7647.97,
+          "hollow_tube_eta08_sp8007_thin_shell_valid": false,
           "solid_rod_critical_r_over_L": 0.040047,
           "solid_rod_critical_rho_bar": 0.007335,
           "solid_rod_critical_rho_bar_compressive": 0.001154
@@ -212,7 +222,7 @@
     ]
   },
   "inputs": {
-    "data/carbon_fibers.json_sha256": "eb9b2f1d9bfee27eaa8fe94f7f4187b8f5795a5f3b300ff232408d10ce657019"
+    "data/carbon_fibers.json_sha256": "aa214cbb8c073ca54814227656a0ad4b8d0eebe2223553748b4fcb19a7beeb2d"
   },
   "must_fail_controls": [
     {
@@ -254,6 +264,7 @@
       "control": "tensile_strength_and_uncapped_tube_gain_govern_cfrp_compression",
       "k13_eta08_allow_MPa_at_5pct": 350.0,
       "k13_eta099_sp8007_shell_MPa": 226.68,
+      "k13_rom_tensile_MPa": 2225.54,
       "rejected": true
     }
   ],
